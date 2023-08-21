@@ -9,16 +9,21 @@ from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, GenerationConfig
+from langchain.embeddings import HuggingFaceInstructEmbeddings
 
 from pyrogram import Client, filters
 
 
 load_dotenv()
 OpenAI.api_key = os.getenv('OPENAI_API_KEY')
-llm = ChatOpenAI(temperature=0)
+# llm = ChatOpenAI(temperature=0)
 
 ##################################################
-'''
+
+embeddings = HuggingFaceInstructEmbeddings(
+        model_name="hkunlp/instructor-xl",
+    )
+
 model_id = "lmsys/vicuna-13b-v1.3"
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
@@ -39,9 +44,9 @@ pipe = pipeline(
     )
 
 llm = HuggingFacePipeline(pipeline=pipe)
-'''
+
 #################################################
-db = Chroma(embedding_function=OpenAIEmbeddings(), persist_directory="./vectorstore")
+db = Chroma(embedding_function=embeddings, persist_directory="./vectorstore")
 
 query = "Состав продукта Prostatricum"
 # docs = db.similarity_search(query)
