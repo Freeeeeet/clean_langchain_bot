@@ -15,15 +15,10 @@ from pyrogram import Client, filters
 
 load_dotenv()
 OpenAI.api_key = os.getenv('OPENAI_API_KEY')
-# llm = ChatOpenAI(temperature=0)
+llm = ChatOpenAI(temperature=0)
 
-# llm = HuggingFacePipeline.from_model_id(
-    # model_id="TheBloke/Llama-2-13B-Chat-fp16",
-    # task="text-generation",
-    # model_kwargs={"temperature": 0, "max_length": 64},
-    # load_in_8bit=True,
-    # low_cpu_mem_usage=True,
-# )
+##################################################
+'''
 model_id = "lmsys/vicuna-13b-v1.3"
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
@@ -36,7 +31,7 @@ pipe = pipeline(
         "text-generation",
         model=model,
         tokenizer=tokenizer,
-        max_length=4096,
+        max_length=8192,
         temperature=0,
         top_p=0.95,
         repetition_penalty=1.15,
@@ -44,8 +39,8 @@ pipe = pipeline(
     )
 
 llm = HuggingFacePipeline(pipeline=pipe)
-
-
+'''
+#################################################
 db = Chroma(embedding_function=OpenAIEmbeddings(), persist_directory="./vectorstore")
 
 query = "Состав продукта Prostatricum"
