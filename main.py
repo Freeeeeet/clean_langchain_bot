@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-from langchain.llms import OpenAI
+from langchain.llms import OpenAI, HuggingFacePipeline
 from langchain.chat_models import ChatOpenAI
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
@@ -12,7 +12,16 @@ from pyrogram import Client, filters
 
 load_dotenv()
 OpenAI.api_key = os.getenv('OPENAI_API_KEY')
-llm = ChatOpenAI(temperature=0)
+# llm = ChatOpenAI(temperature=0)
+
+llm = HuggingFacePipeline.from_model_id(
+    model_id="bigscience/bloom-7b1",
+    task="text-generation",
+    model_kwargs={"temperature": 0, "max_length": 64},
+    load_in_8bit=True,
+    low_cpu_mem_usage=True,
+)
+
 
 db = Chroma(embedding_function=OpenAIEmbeddings(), persist_directory="./vectorstore")
 
@@ -21,7 +30,7 @@ query = "Состав продукта Prostatricum"
 # print(docs[0].page_content)
 
 retriever = db.as_retriever()
-qa = RetrievalQA.from_chain_type(llm=OpenAI(), chain_type="stuff", retriever=retriever)
+qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
 
 # print(qa.run(query))
 
