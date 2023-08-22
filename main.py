@@ -24,8 +24,10 @@ embeddings = HuggingFaceInstructEmbeddings(
         model_name="hkunlp/instructor-xl",
     )
 
-model_id = "lmsys/vicuna-13b-v1.3"
-# model_id = "sharpbai/Llama-2-13b-chat-hf"
+# model_id = "lmsys/vicuna-13b-v1.3"
+# model_id = "daryl149/llama-2-7b-chat-hf"
+model_id = "Photolens/llama-2-7b-langchain-chat"
+
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
 
