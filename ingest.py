@@ -18,7 +18,7 @@ embeddings = HuggingFaceInstructEmbeddings(
     )
 
 
-raw_documents = TextLoader('./RA_new_inst_Proststricum_RU_GEB_rev_3.txt').load()
+raw_documents = TextLoader('./VARILUX_RUSSIA_GEB_rev_3.txt').load()
 text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
 documents = text_splitter.split_documents(raw_documents)
 db = Chroma.from_documents(documents, embeddings, persist_directory="./vectorstore")

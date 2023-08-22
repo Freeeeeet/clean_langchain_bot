@@ -25,6 +25,7 @@ embeddings = HuggingFaceInstructEmbeddings(
     )
 
 model_id = "lmsys/vicuna-13b-v1.3"
+# model_id = "sharpbai/Llama-2-13b-chat-hf"
 
 tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
 
