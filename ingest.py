@@ -11,11 +11,11 @@ from langchain.embeddings import HuggingFaceInstructEmbeddings
 
 load_dotenv()
 OpenAI.api_key = os.getenv('OPENAI_API_KEY')
-# embeddings = OpenAIEmbeddings()
+embeddings = EM
 
-embeddings = HuggingFaceInstructEmbeddings(
-        model_name="hkunlp/instructor-xl",
-    )
+# embeddings = HuggingFaceInstructEmbeddings(
+#         model_name="hkunlp/instructor-xl",
+#     )
 
 
 raw_documents = TextLoader('./VARILUX_RUSSIA_GEB_rev_3.txt').load()

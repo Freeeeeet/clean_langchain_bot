@@ -12,49 +12,48 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, Generati
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 
 from pyrogram import Client, filters
-
+from constants import (
+    EMBEDDING_MODEL_NAME,
+    PERSIST_DIRECTORY,
+)
 
 load_dotenv()
-OpenAI.api_key = os.getenv('OPENAI_API_KEY')
-# llm = ChatOpenAI(temperature=0)
+# OpenAI.api_key = os.getenv('OPENAI_API_KEY')
+llm = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k")
 
 ##################################################
+#embeddings = EMBEDDING_MODEL_NAME
 
 embeddings = HuggingFaceInstructEmbeddings(
-        model_name="hkunlp/instructor-xl",
+        model_name=EMBEDDING_MODEL_NAME,
     )
 
 # model_id = "lmsys/vicuna-13b-v1.3"
 # model_id = "daryl149/llama-2-7b-chat-hf"
-model_id = "Photolens/llama-2-7b-langchain-chat"
+# model_id = "Photolens/llama-2-7b-langchain-chat"
 
 
-tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
+# tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
+#
+# model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto", load_in_4bit=True)
+#
+# generation_config = GenerationConfig.from_pretrained(model_id)
 
-model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto", load_in_4bit=True)
+# pipe = pipeline(
+#         "text-generation",
+#         model=model,
+#         tokenizer=tokenizer,
+#         max_length=8192,
+#         temperature=0,
+#         top_p=0.95,
+#         repetition_penalty=1.15,
+#         generation_config=generation_config,
+#     )
 
-generation_config = GenerationConfig.from_pretrained(model_id)
-
-pipe = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        max_length=8192,
-        temperature=0,
-        top_p=0.95,
-        repetition_penalty=1.15,
-        generation_config=generation_config,
-    )
-
-llm = HuggingFacePipeline(pipeline=pipe)
+# llm = HuggingFacePipeline(pipeline=pipe)
 
 #################################################
-db = Chroma(embedding_function=embeddings, persist_directory="./vectorstore")
-
-query = "Состав продукта Prostatricum"
-# docs = db.similarity_search(query)
-# print(docs[0].page_content)
-
+db = Chroma(embedding_function=embeddings, persist_directory=PERSIST_DIRECTORY)
 retriever = db.as_retriever()
 qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
 
@@ -80,9 +79,9 @@ def handle_input(client, message):
         docs = db.similarity_search(query)
         first = docs[0].page_content
         print(first)
-        message.reply_text(first)
+        # message.reply_text(first)
 
-        second = qa.run(query)
+        second = qa.run(f"Give a detailed answer to that question: {query} \nThe answer should be in the same language as the question.")
         print(second)
         message.reply_text(second)
 
