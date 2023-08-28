@@ -19,6 +19,7 @@ from constants import (
     PERSIST_DIRECTORY,
     COLLECTION_NAME
 )
+from real_time_ingest import main_ingest
 
 load_dotenv()
 # OpenAI.api_key = os.getenv('OPENAI_API_KEY')
@@ -54,10 +55,13 @@ client = Client(
 def handle_callback_query(client: Client, callback_query: CallbackQuery):
     data = callback_query.data
     action, file_name = data.split(':')
+    file_path = f"./files/{file_name[:-4]}"
 
     if action == 'first':
         # Обработка действия принятия файла
         print("Collection 1 chosen")
+        main_ingest(f"./files/{file_name[:-4]}", "./vectorstore", "zendesk_collection")
+
 
 
         # Удаление кнопок из сообщения модератора
@@ -75,18 +79,19 @@ def handle_callback_query(client: Client, callback_query: CallbackQuery):
 def message_file(client: Client, message: Message):
     client.send_message(message.chat.id, 'Ваш файл будет обработан модератором')
     # client.send_document('freeeeeet', document=message.document.file_id, caption=f'Новый файл для моей базы знаний, его прислал @{message.from_user.username}. Определи категорию этого файла, пожалуйста(кнопка)')
-    file_name = f"./files/{message.document.file_name[-30:]}"
-    client.download_media(message.document.file_id, file_name=file_name)
+    file_name = message.document.file_name
+    file_path = f"./files/{file_name[:-4]}/{file_name[-30:]}"
+    client.download_media(message.document.file_id, file_name=file_path)
 
     # Добавляем кнопки
     keyboard = (InlineKeyboardMarkup
         (
         [
             [
-                InlineKeyboardButton("Коллекция 1",
+                InlineKeyboardButton("Категория 1",
                                      callback_data=f"first:{file_name}"),
 
-                InlineKeyboardButton("Коллекция 2",
+                InlineKeyboardButton("Категория 2",
                                      callback_data=f"second:{file_name}",
                                      )
             ]
