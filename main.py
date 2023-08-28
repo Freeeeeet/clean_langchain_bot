@@ -12,80 +12,107 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, Generati
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 
 from pyrogram import Client, filters
+from pyrogram.handlers import MessageHandler
+from pyrogram.types import Message, InputMediaDocument, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from constants import (
     EMBEDDING_MODEL_NAME,
     PERSIST_DIRECTORY,
+    COLLECTION_NAME
 )
 
 load_dotenv()
 # OpenAI.api_key = os.getenv('OPENAI_API_KEY')
 llm = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k")
 
-##################################################
-#embeddings = EMBEDDING_MODEL_NAME
+embeddings = EMBEDDING_MODEL_NAME
 
-embeddings = HuggingFaceInstructEmbeddings(
-        model_name=EMBEDDING_MODEL_NAME,
-    )
-
-# model_id = "lmsys/vicuna-13b-v1.3"
-# model_id = "daryl149/llama-2-7b-chat-hf"
-# model_id = "Photolens/llama-2-7b-langchain-chat"
-
-
-# tokenizer = AutoTokenizer.from_pretrained(model_id, use_fast=False)
-#
-# model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto", load_in_4bit=True)
-#
-# generation_config = GenerationConfig.from_pretrained(model_id)
-
-# pipe = pipeline(
-#         "text-generation",
-#         model=model,
-#         tokenizer=tokenizer,
-#         max_length=8192,
-#         temperature=0,
-#         top_p=0.95,
-#         repetition_penalty=1.15,
-#         generation_config=generation_config,
-#     )
-
-# llm = HuggingFacePipeline(pipeline=pipe)
-
-#################################################
-db = Chroma(embedding_function=embeddings, persist_directory=PERSIST_DIRECTORY)
+db = Chroma(embedding_function=embeddings, persist_directory=PERSIST_DIRECTORY, collection_name=COLLECTION_NAME)
 retriever = db.as_retriever()
 qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
 
 # print(qa.run(query))
 
-bot = Client(
-    "some_bot_name",
+
+# @bot.on_message(filters.private & filters.text)
+
+# @client.on_message()
+# def all_message(client: Client, message: Message):
+#     message.reply(message.text, reply_to_message_id=message.id)
+
+
+# client.add_handler(MessageHandler(all_message))
+
+client = Client(
+    "zendesk_client",
     api_id=os.getenv("API_ID"),
     api_hash=os.getenv("API_HASH"),
     bot_token=os.getenv("TOKEN")
 )
 
 
-@bot.on_message(filters.private & filters.text)
-def handle_input(client, message):
+@client.on_callback_query()
+def handle_callback_query(client: Client, callback_query: CallbackQuery):
+    data = callback_query.data
+    action, file_name = data.split(':')
+
+    if action == 'first':
+        # Обработка действия принятия файла
+        print("Collection 1 chosen")
+
+
+        # Удаление кнопок из сообщения модератора
+        client.edit_message_reply_markup('freeeeeet', message_id=callback_query.message.id, reply_markup=None)
+
+    elif action == 'second':
+        # Обработка действия отклонения файла
+        print("Collection 2 chosen")
+
+        # Удаление кнопок из сообщения модератора
+        client.edit_message_reply_markup('freeeeeet', message_id=callback_query.message.id, reply_markup=None)
+
+
+@client.on_message(filters.document)
+def message_file(client: Client, message: Message):
+    client.send_message(message.chat.id, 'Ваш файл будет обработан модератором')
+    # client.send_document('freeeeeet', document=message.document.file_id, caption=f'Новый файл для моей базы знаний, его прислал @{message.from_user.username}. Определи категорию этого файла, пожалуйста(кнопка)')
+    file_name = f"./files/{message.document.file_name[-30:]}"
+    client.download_media(message.document.file_id, file_name=file_name)
+
+    # Добавляем кнопки
+    keyboard = (InlineKeyboardMarkup
+        (
+        [
+            [
+                InlineKeyboardButton("Коллекция 1",
+                                     callback_data=f"first:{file_name}"),
+
+                InlineKeyboardButton("Коллекция 2",
+                                     callback_data=f"second:{file_name}",
+                                     )
+            ]
+        ]
+    )
+    )
+    client.send_document('freeeeeet', document=message.document.file_id,
+                         caption=f'Новый файл для моей базы знаний, его прислал @{message.from_user.username}. Определи категорию этого файла',
+                         reply_markup=keyboard)
+
+    # message.reply('Ваш файл будет обработан модератором', quote=True)
+
+
+@client.on_message(filters.text)
+def message_text(client: Client, message):
     try:
         msgs = message.text
-        K = message.reply_text("Минуточку, сейчас уточню...")
-
+        temp_message = message.reply_text("Минуточку, сейчас уточню...")
         query = msgs
 
+        answer = qa.run(
+            f"Give a detailed answer to that question: {query} \nThe answer should be in the same language as the question.")
+        print(answer)
+        message.reply_text(answer)
 
-        docs = db.similarity_search(query)
-        first = docs[0].page_content
-        print(first)
-        # message.reply_text(first)
-
-        second = qa.run(f"Give a detailed answer to that question: {query} \nThe answer should be in the same language as the question.")
-        print(second)
-        message.reply_text(second)
-
-        K.delete()
+        temp_message.delete()
 
     except Exception as e:
         logging.exception("An error occurred during message processing: %s", e)
@@ -94,4 +121,15 @@ def handle_input(client, message):
             photo=notworking,
             caption=f"Сейчас не могу ответить, ведутся технические работы, попробуйте чуть позже или обратитесь в нашу тех. поддержку")
 
-bot.run()
+
+# client.add_handler(MessageHandler(message_file, filters=filters.document))
+# client.add_handler(MessageHandler(message_text, filters=filters.text))
+
+# client.send_message('freeeeeet', 'Hello Bodya')
+
+# list_media = []
+# media_1 = InputMediaDocument('./RA_new_inst_Proststricum_RU_GEB_rev_3.txt', caption='Hello, file:')
+# list_media.append(media_1)
+# client.send_document('freeeeeet', './RA_new_inst_Proststricum_RU_GEB_rev_3.txt')
+
+client.run()

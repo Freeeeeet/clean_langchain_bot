@@ -1,20 +1,23 @@
 import os
-
 from dotenv import load_dotenv
+
 from langchain.embeddings.openai import OpenAIEmbeddings
 # https://python.langchain.com/en/latest/modules/indexes/document_loaders/examples/excel.html?highlight=xlsx#microsoft-excel
 from langchain.document_loaders import CSVLoader, PDFMinerLoader, TextLoader, UnstructuredExcelLoader
 from langchain.llms import OpenAI
+from langchain.embeddings import HuggingFaceInstructEmbeddings
 
 load_dotenv()
 OpenAI.api_key = os.getenv('OPENAI_API_KEY')
 ROOT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
+# prefix_country = "ru"
+
 # Define the folder for storing database
 SOURCE_DIRECTORY = f"./source_directory"
 
 PERSIST_DIRECTORY = f"./vectorstore"
-
+COLLECTION_NAME = f"zendesk_collection"
 # Can be changed to a specific number
 INGEST_THREADS = os.cpu_count() or 8
 
@@ -34,8 +37,12 @@ DOCUMENT_MAP = {
 }
 
 # Default Instructor Model
-# EMBEDDING_MODEL_NAME = OpenAIEmbeddings()
-EMBEDDING_MODEL_NAME = "hkunlp/instructor-large"
+EMBEDDING_MODEL_NAME = OpenAIEmbeddings()
+
+# EMBEDDING_MODEL_NAME = HuggingFaceInstructEmbeddings(
+#         model_name="hkunlp/instructor-large",
+#     )
+# EMBEDDING_MODEL_NAME = "hkunlp/instructor-large"
 # You can also choose a smaller model, don't forget to change HuggingFaceInstructEmbeddings
 # to HuggingFaceEmbeddings in both ingest.py and run_localGPT.py
 # EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
