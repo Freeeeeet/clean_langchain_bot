@@ -1,4 +1,5 @@
 import os
+import shutil
 from dotenv import load_dotenv
 import logging
 
@@ -58,22 +59,52 @@ def handle_callback_query(client: Client, callback_query: CallbackQuery):
     file_path = f"./files/{file_name[:-4]}"
 
     if action == 'first':
-        # Обработка действия принятия файла
+        # Обработка при выборе первой категории
         print("Collection 1 chosen")
-        main_ingest(f"./files/{file_name[:-4]}", "./vectorstore", "zendesk_collection")
-
-
-
         # Удаление кнопок из сообщения модератора
         client.edit_message_reply_markup('freeeeeet', message_id=callback_query.message.id, reply_markup=None)
+        client.send_message('freeeeeet', "Вы выбрали 'Категория 1'")
+
+        main_ingest(f"./files/{file_name[:-4]}", "./vectorstore_1", "zendesk_collection_1")
+        shutil.rmtree(f"./files/{file_name[:-4]}")
 
     elif action == 'second':
-        # Обработка действия отклонения файла
+        # Обработка при выборе второй категории
         print("Collection 2 chosen")
 
         # Удаление кнопок из сообщения модератора
         client.edit_message_reply_markup('freeeeeet', message_id=callback_query.message.id, reply_markup=None)
+        client.send_message('freeeeeet', "Вы выбрали 'Категория 2'")
 
+        main_ingest(f"./files/{file_name[:-4]}", "./vectorstore_2", "zendesk_collection_2")
+        shutil.rmtree(f"./files/{file_name[:-4]}")
+
+@client.on_message(filters.document & filters.caption)
+def message_file_and_caption(client: Client, message: Message):
+    client.send_message(message.chat.id, 'Ваш файл и комментарий будут обработаны модератором')
+    # client.send_document('freeeeeet', document=message.document.file_id, caption=f'Новый файл для моей базы знаний, его прислал @{message.from_user.username}. Определи категорию этого файла, пожалуйста(кнопка)')
+    file_name = message.document.file_name
+    file_path = f"./files/{file_name[:-4]}/{file_name[-30:]}"
+    client.download_media(message.document.file_id, file_name=file_path)
+
+    # Добавляем кнопки
+    keyboard = (InlineKeyboardMarkup
+        (
+        [
+            [
+                InlineKeyboardButton("Категория 1",
+                                     callback_data=f"first:{file_name}"),
+
+                InlineKeyboardButton("Категория 2",
+                                     callback_data=f"second:{file_name}",
+                                     )
+            ]
+        ]
+    )
+    )
+    client.send_document('freeeeeet', document=message.document.file_id,
+                         caption=f'Новый файл для моей базы знаний, его прислал @{message.from_user.username}. Определи категорию этого файла, нажав на название категории. Также, {message.from_user.first_name} оставил комментарий:\n"{message.caption}"',
+                         reply_markup=keyboard)
 
 @client.on_message(filters.document)
 def message_file(client: Client, message: Message):
