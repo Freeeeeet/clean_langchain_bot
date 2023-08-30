@@ -8,6 +8,16 @@ from langchain.chat_models import ChatOpenAI
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chains import RetrievalQA
+# from langchain.agents.agent_toolkits import (
+#     create_vectorstore_agent,
+#     VectorStoreToolkit,
+#     VectorStoreInfo,
+# )
+from langchain.agents.agent_toolkits import (
+    create_vectorstore_router_agent,
+    VectorStoreRouterToolkit,
+    VectorStoreInfo,
+)
 
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, GenerationConfig
 from langchain.embeddings import HuggingFaceInstructEmbeddings
@@ -24,7 +34,9 @@ from real_time_ingest import main_ingest
 
 load_dotenv()
 # OpenAI.api_key = os.getenv('OPENAI_API_KEY')
-llm = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k")
+llm = OpenAI(temperature=0,
+             model_name="gpt-3.5-turbo-16k"
+             )
 
 embeddings = EMBEDDING_MODEL_NAME
 
@@ -32,17 +44,13 @@ db = Chroma(embedding_function=embeddings, persist_directory=PERSIST_DIRECTORY, 
 retriever = db.as_retriever()
 qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
 
-# print(qa.run(query))
-
-
-# @bot.on_message(filters.private & filters.text)
-
-# @client.on_message()
-# def all_message(client: Client, message: Message):
-#     message.reply(message.text, reply_to_message_id=message.id)
-
-
-# client.add_handler(MessageHandler(all_message))
+# vectorstore_info = VectorStoreInfo(
+#     name="main_tool",
+#     description="all info",
+#     vectorstore=db,
+# )
+# router_toolkit = VectorStoreRouterToolkit(vectorstores=[vectorstore_info], llm=llm)
+# agent_executor = create_vectorstore_router_agent(llm=llm, toolkit=router_toolkit, verbose=True)
 
 client = Client(
     "zendesk_client",
@@ -144,7 +152,12 @@ def message_text(client: Client, message):
         query = msgs
 
         answer = qa.run(
-            f"Give a detailed answer to that question: {query} \nThe answer should be in the same language as the question.")
+            # f"Give a detailed answer to that question: {query} \nThe answer should be in the same language as the question."
+            # f"Ты оператор колл-центра с десятилетним стажем. У тебя есть база данных с ответов на вопросы клиентов с рекомендациями, которую ты используешь для ответа клиенту. Ты должен выбрать десять ответов и на их основе создать новый ответ, а также, учесть все замечания из рекомендаций. Твоя основная задача - продать клиенту продукт всеми доступными способами, желательно, с одного ответа на вопрос. Вопрос: {query}"
+            f"Ты тренер колл-центра по продажам, который выдает лучшие качественные и детальные рекомендации по продажам продукта. Вопрос: {query}"
+        )
+
+        # answer = agent_executor.run(query)
         print(answer)
         message.reply_text(answer)
 
