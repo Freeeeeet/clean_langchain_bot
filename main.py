@@ -2,6 +2,7 @@ import os
 import shutil
 from dotenv import load_dotenv
 import logging
+import json
 
 from langchain.llms import OpenAI, HuggingFacePipeline
 from langchain.chat_models import ChatOpenAI
@@ -28,7 +29,8 @@ from pyrogram.types import Message, InputMediaDocument, InlineKeyboardMarkup, In
 from constants import (
     EMBEDDING_MODEL_NAME,
     PERSIST_DIRECTORY,
-    COLLECTION_NAME
+    COLLECTION_NAME,
+    CHAT_HISTORY_PATH
 )
 from real_time_ingest import main_ingest
 
@@ -58,7 +60,6 @@ client = Client(
     api_hash=os.getenv("API_HASH"),
     bot_token=os.getenv("TOKEN")
 )
-
 
 @client.on_callback_query()
 def handle_callback_query(client: Client, callback_query: CallbackQuery):
@@ -146,19 +147,48 @@ def message_file(client: Client, message: Message):
 
 @client.on_message(filters.text)
 def message_text(client: Client, message):
+    file_path = f"{CHAT_HISTORY_PATH}/chat_id_{message.chat.id}.json"
     try:
-        msgs = message.text
+        # ЗАПИСЫВАЕМ CHAT_HISTORY:
+        if os.path.exists(file_path):
+            with open(file_path, 'r', encoding='utf-8') as file:
+                data = json.load(file)
+                print(data)
+        else:
+            data = []
         temp_message = message.reply_text("Минуточку, сейчас уточню...")
-        query = msgs
+        chat_history = ""
+        # Форматирование и добавление данных в историю чата
+        for entry in data:
+            client_message = entry['client_message']
+            operator_message = entry['operator_message']
 
+            chat_history += f"Клиент: {client_message}\n"
+            chat_history += f"Оператор: {operator_message}\n"
+        print(chat_history)
+        query = message.text
         answer = qa.run(
             # f"Give a detailed answer to that question: {query} \nThe answer should be in the same language as the question."
             # f"Ты оператор колл-центра с десятилетним стажем. У тебя есть база данных с ответов на вопросы клиентов с рекомендациями, которую ты используешь для ответа клиенту. Ты должен выбрать десять ответов и на их основе создать новый ответ, а также, учесть все замечания из рекомендаций. Твоя основная задача - продать клиенту продукт всеми доступными способами, желательно, с одного ответа на вопрос. Вопрос: {query}"
-            f"Ты тренер колл-центра по продажам, который выдает лучшие качественные и детальные рекомендации по продажам продукта. Вопрос: {query}"
+            # f"Ты тренер колл-центра по продажам, который выдает лучшие качественные и детальные рекомендации по продажам продукта. Вопрос: {query}"
+            query
         )
+        new_entry = {
+            "client_message": f"{message.text}",
+            "operator_message": f"{answer}"
+        }
+        data.append(new_entry)
+
+        if len(data) >= 5:
+            data.pop(0)
+
+        with open(file_path, 'w', encoding='utf-8') as file:
+            json.dump(data, file, indent=4, ensure_ascii=False)
+        # ЗАПИСАЛИ CHAT_HISTORY
+
 
         # answer = agent_executor.run(query)
-        print(answer)
+
         message.reply_text(answer)
 
         temp_message.delete()

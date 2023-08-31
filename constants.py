@@ -14,7 +14,8 @@ ROOT_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 # prefix_country = "ru"
 
 # Define the folder for storing database
-SOURCE_DIRECTORY = f"./source_directory"
+SOURCE_DIRECTORY = f"./temp_dir/final_folder_edit"
+# SOURCE_DIRECTORY = f"./source_directory"
 
 PERSIST_DIRECTORY = f"./vectorstore"
 COLLECTION_NAME = f"zendesk_collection"
@@ -46,3 +47,5 @@ EMBEDDING_MODEL_NAME = OpenAIEmbeddings()
 # You can also choose a smaller model, don't forget to change HuggingFaceInstructEmbeddings
 # to HuggingFaceEmbeddings in both ingest.py and run_localGPT.py
 # EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
+
+CHAT_HISTORY_PATH = f"./chat_history/"
