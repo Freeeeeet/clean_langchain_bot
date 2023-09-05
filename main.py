@@ -61,6 +61,7 @@ client = Client(
     bot_token=os.getenv("TOKEN")
 )
 
+
 @client.on_callback_query()
 def handle_callback_query(client: Client, callback_query: CallbackQuery):
     data = callback_query.data
@@ -74,8 +75,13 @@ def handle_callback_query(client: Client, callback_query: CallbackQuery):
         client.edit_message_reply_markup('freeeeeet', message_id=callback_query.message.id, reply_markup=None)
         client.send_message('freeeeeet', "Вы выбрали 'Категория 1'")
 
-        main_ingest(f"./files/{file_name[:-4]}", "./vectorstore_1", "zendesk_collection_1")
-        shutil.rmtree(f"./files/{file_name[:-4]}")
+        main_ingest(f"{file_path}", "./vectorstore", "zendesk_collection")
+        global db, retriever, qa
+        db = Chroma(embedding_function=embeddings, persist_directory=PERSIST_DIRECTORY, collection_name=COLLECTION_NAME)
+        retriever = db.as_retriever()
+        qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever)
+        shutil.rmtree(file_path)
+        # return db
 
     elif action == 'second':
         # Обработка при выборе второй категории
@@ -86,7 +92,32 @@ def handle_callback_query(client: Client, callback_query: CallbackQuery):
         client.send_message('freeeeeet', "Вы выбрали 'Категория 2'")
 
         main_ingest(f"./files/{file_name[:-4]}", "./vectorstore_2", "zendesk_collection_2")
+        # db = Chroma(embedding_function=embeddings, persist_directory=PERSIST_DIRECTORY, collection_name=COLLECTION_NAME)
         shutil.rmtree(f"./files/{file_name[:-4]}")
+
+
+
+@client.on_message(filters.command(["start"], prefixes=["/", "!"]))
+async def start(client, message):
+    await message.reply_text(f"""Здравствуйте, {message.from_user.first_name}! Предлагаем вам опробовать умного бота на\
+ основе GPT для наших операторов и других сотрудниках примере нашей базы знаний из Zendesk. Бот хранит в памяти 4\
+ последних сообщения и дает ответс учётом этих данных. Историю сообщений можно очистить с помощью команды\
+ /clear_chat_history""")
+
+
+@client.on_message(filters.command(["clear_chat_history"], prefixes=["/", "!"]))
+async def start(client, message):
+    file_path = f"{CHAT_HISTORY_PATH}/chat_id_{message.chat.id}.json"
+    os.remove(file_path)
+    await message.reply_text(f"""{message.from_user.first_name}, ваша история сообщений с ботом очищена!""")
+
+
+@client.on_message(filters.command(["help"], prefixes=["/", "!"]))
+async def start(client, message):
+    await message.reply_text(f"""Список доступных команд:\n
+/start : Приветственное сообщение\n
+/clear_chat_history : Очистить историю чата""")
+
 
 @client.on_message(filters.document & filters.caption)
 def message_file_and_caption(client: Client, message: Message):
@@ -114,6 +145,7 @@ def message_file_and_caption(client: Client, message: Message):
     client.send_document('freeeeeet', document=message.document.file_id,
                          caption=f'Новый файл для моей базы знаний, его прислал @{message.from_user.username}. Определи категорию этого файла, нажав на название категории. Также, {message.from_user.first_name} оставил комментарий:\n"{message.caption}"',
                          reply_markup=keyboard)
+
 
 @client.on_message(filters.document)
 def message_file(client: Client, message: Message):
@@ -167,16 +199,21 @@ def message_text(client: Client, message):
             chat_history += f"Оператор: {operator_message}\n"
         print(chat_history)
         query = message.text
-        answer = qa.run(
-            # f"Give a detailed answer to that question: {query} \nThe answer should be in the same language as the question."
-            # f"Ты оператор колл-центра с десятилетним стажем. У тебя есть база данных с ответов на вопросы клиентов с рекомендациями, которую ты используешь для ответа клиенту. Ты должен выбрать десять ответов и на их основе создать новый ответ, а также, учесть все замечания из рекомендаций. Твоя основная задача - продать клиенту продукт всеми доступными способами, желательно, с одного ответа на вопрос. Вопрос: {query}"
-            # f"Ты тренер колл-центра по продажам, который выдает лучшие качественные и детальные рекомендации по продажам продукта. Вопрос: {query}"
-            query
-        )
+        if chat_history != "":
+            answer = qa.run(
+                # f"Give a detailed answer to that question: {query} \nThe answer should be in the same language as the question."
+                # f"Ты оператор колл-центра с десятилетним стажем. У тебя есть база данных с ответов на вопросы клиентов с рекомендациями, которую ты используешь для ответа клиенту. Ты должен выбрать десять ответов и на их основе создать новый ответ, а также, учесть все замечания из рекомендаций. Твоя основная задача - продать клиенту продукт всеми доступными способами, желательно, с одного ответа на вопрос. Вопрос: {query}"
+                # f"Ты тренер колл-центра по продажам, который выдает лучшие качественные и детальные рекомендации по продажам продукта. Вопрос: {query}"
+                f"Ты оператор колл-центра. Предыдущий диалог с клиентом представлен ниже. Тебе нужно его продолжить.\n{chat_history}\nКлиент:{query}\nОператор:"
+            )
+
+        else:
+            answer = qa.run(query)
         new_entry = {
             "client_message": f"{message.text}",
             "operator_message": f"{answer}"
         }
+        print(answer)
         data.append(new_entry)
 
         if len(data) >= 5:
@@ -185,7 +222,6 @@ def message_text(client: Client, message):
         with open(file_path, 'w', encoding='utf-8') as file:
             json.dump(data, file, indent=4, ensure_ascii=False)
         # ЗАПИСАЛИ CHAT_HISTORY
-
 
         # answer = agent_executor.run(query)
 
